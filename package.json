@@ -1,0 +1,51 @@
+{
+  "name": "applequeue",
+  "version": "1.0.0",
+  "description": "Terminal client for Apple Queue: queue Apple Journal, Notes, Reminders, and Calendar items from a shell.",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "applequeue": "bin/applequeue.js"
+  },
+  "engines": {
+    "node": ">=18.17"
+  },
+  "files": [
+    "bin",
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "test": "node --test test/*.test.js",
+    "build": "node scripts/build.js win-x64 win-arm64 linux-x64 linux-arm64 darwin-x64 darwin-arm64",
+    "build:win": "node scripts/build.js win-x64 win-arm64",
+    "winget": "node scripts/winget.js",
+    "prepublishOnly": "node --test test/*.test.js",
+    "start": "node bin/applequeue.js"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2",
+    "postject": "^1.0.0-alpha.6"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/DudeThatsErin/AppleQueueTerminal.git"
+  },
+  "homepage": "https://applequeue.erinskidds.com",
+  "bugs": {
+    "url": "https://github.com/DudeThatsErin/AppleQueueTerminal/issues"
+  },
+  "keywords": [
+    "apple",
+    "applequeue",
+    "journal",
+    "notes",
+    "reminders",
+    "calendar",
+    "shortcuts",
+    "cli",
+    "productivity"
+  ],
+  "author": "Erin Skidds"
+}
