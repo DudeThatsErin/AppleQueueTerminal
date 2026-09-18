@@ -1,0 +1,69 @@
+name: Release
+
+# Publishes the applequeue dotnet tool to NuGet.org using Trusted Publishing:
+# a short-lived key is minted from GitHub's OIDC token, so there is no API key
+# stored in repository secrets.
+#
+# Tag a release to publish it:  git tag v1.0.0 && git push origin v1.0.0
+# The package version comes from the tag, so the csproj <Version> is only a
+# fallback for local builds.
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to publish (e.g. 1.0.0)'
+        required: true
+
+permissions:
+  id-token: write   # required to request the OIDC token
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Resolve version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "value=${{ inputs.version }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "value=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - run: dotnet restore
+
+      - run: dotnet build --no-restore -c Release -p:Version=${{ steps.version.outputs.value }}
+
+      # Never publish a version that does not pass its own tests.
+      - run: dotnet test --no-build -c Release
+
+      - run: dotnet pack src/AppleQueue.Cli --no-build -c Release -p:Version=${{ steps.version.outputs.value }} -o artifacts
+
+      # Minted last, right before the push: the key is only valid for ~1 hour.
+      - name: NuGet login
+        id: login
+        uses: NuGet/login@v1
+        with:
+          user: REPLACE_WITH_YOUR_NUGET_USERNAME
+
+      - name: Push to NuGet.org
+        run: >
+          dotnet nuget push artifacts/*.nupkg
+          --api-key "${{ steps.login.outputs.NUGET_API_KEY }}"
+          --source https://api.nuget.org/v3/index.json
+          --skip-duplicate
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nupkg
+          path: artifacts/*.nupkg
