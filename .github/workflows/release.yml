@@ -54,7 +54,7 @@ jobs:
         id: login
         uses: NuGet/login@v1
         with:
-          user: REPLACE_WITH_YOUR_NUGET_USERNAME
+          user: DudeThatsErin
 
       - name: Push to NuGet.org
         run: >

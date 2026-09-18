@@ -6,7 +6,7 @@ namespace AppleQueue.Cli;
 /// <summary>Top-level dispatch: argv in, exit code out. No I/O of its own beyond help.</summary>
 public sealed class Cli
 {
-    public const string Version = "1.0.0";
+    public const string Version = "2.0.0";
 
     private readonly CommandContext _context;
 

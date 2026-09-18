@@ -4,9 +4,18 @@
 terminal. The CLI only writes to a backend queue; your existing Apple Shortcut
 collects the items and creates them in Apple's apps.
 
-This is a C# rewrite. The tree is currently scaffolding: the command surface,
-exit codes, and help text are in place, and the implementation bodies throw
-`NotImplementedException` with the behaviour to restore described in XML docs.
+## Install
+
+```bash
+dotnet tool install -g applequeue
+```
+
+Requires the .NET 8 runtime or later.
+
+> **Moving from npm?** Version 2.0.0 is a C# rewrite distributed as a dotnet
+> tool. The npm package `applequeue` is deprecated and receives no further
+> updates. Run `npm uninstall -g applequeue` and install as above — the
+> commands, flags, and exit codes are unchanged.
 
 ## Layout
 
@@ -35,10 +44,20 @@ Run the CLI locally:
 dotnet run --project src/AppleQueue.Cli -- --help
 ```
 
-Install as a global tool from source:
+Install from source:
 
 ```bash
-dotnet pack -c Release && dotnet tool install -g --add-source src/AppleQueue.Cli/nupkg applequeue
+dotnet pack src/AppleQueue.Cli -c Release -o artifacts && dotnet tool install -g --add-source artifacts applequeue
+```
+
+## Releasing
+
+Tag the commit and push the tag; [release.yml](.github/workflows/release.yml)
+packs, tests, and publishes to NuGet.org via Trusted Publishing (no stored API
+key). The package version comes from the tag.
+
+```bash
+git tag v2.0.0 && git push origin v2.0.0
 ```
 
 ## Configuration
