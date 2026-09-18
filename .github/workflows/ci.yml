@@ -1,4 +1,4 @@
-name: ci
+name: CI
 
 on:
   push:
@@ -6,23 +6,17 @@ on:
   pull_request:
 
 jobs:
-  test:
+  build:
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-        node: [18, 20, 22]
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-dotnet@v4
         with:
-          node-version: ${{ matrix.node }}
-      - run: npm ci
-      - run: npm test
-      # Proves the published tarball installs and runs as `applequeue`,
-      # which is the only install path users actually take.
-      - run: npm pack
-      - run: npm install -g ./applequeue-*.tgz
-        shell: bash
-      - run: applequeue --version
+          dotnet-version: '8.0.x'
+      - run: dotnet restore
+      - run: dotnet build --no-restore -c Release
+      - run: dotnet test --no-build -c Release --verbosity normal

@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>AppleQueue.Cli</RootNamespace>
+    <AssemblyName>applequeue</AssemblyName>
+
+    <!-- dotnet tool packaging: `dotnet tool install -g applequeue` -->
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>applequeue</ToolCommandName>
+    <PackageId>applequeue</PackageId>
+    <Version>1.0.0</Version>
+    <Description>Queue Apple Journal, Notes, Reminders, and Calendar items from the terminal.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="AppleQueue.Cli.Tests" />
+  </ItemGroup>
+
+</Project>
