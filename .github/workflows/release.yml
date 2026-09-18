@@ -1,82 +1,69 @@
-# Push a tag, get a release: npm package, standalone binaries, and the winget
-# manifests ready to submit. Nobody has to clone anything to install.
-#
-#   npm version minor && git push --follow-tags
+name: Release
 
-name: release
+# Publishes the applequeue dotnet tool to NuGet.org using Trusted Publishing:
+# a short-lived key is minted from GitHub's OIDC token, so there is no API key
+# stored in repository secrets.
+#
+# Tag a release to publish it:  git tag v1.0.0 && git push origin v1.0.0
+# The package version comes from the tag, so the csproj <Version> is only a
+# fallback for local builds.
 
 on:
   push:
-    tags:
-      - 'v*'
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to publish (e.g. 1.0.0)'
+        required: true
 
 permissions:
-  contents: write
-  id-token: write # npm provenance
+  id-token: write   # required to request the OIDC token
+  contents: read
 
 jobs:
-  test:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-        node: [18, 20, 22]
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ matrix.node }}
-      - run: npm ci
-      - run: npm test
-
-  publish-npm:
-    needs: test
+  publish:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          registry-url: https://registry.npmjs.org
-      - run: npm ci
-      - run: npm publish --provenance --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-  binaries:
-    needs: test
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-dotnet@v4
         with:
-          node-version: 22
-      - run: npm ci
-      # Every target is cross-built from Linux: postject patches the binaries,
-      # it never runs them.
-      - run: node scripts/build.js win-x64 win-arm64 linux-x64 linux-arm64 darwin-x64 darwin-arm64
-      - run: node scripts/winget.js
-      - uses: softprops/action-gh-release@v2
+          dotnet-version: '8.0.x'
+
+      - name: Resolve version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "value=${{ inputs.version }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "value=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - run: dotnet restore
+
+      - run: dotnet build --no-restore -c Release -p:Version=${{ steps.version.outputs.value }}
+
+      # Never publish a version that does not pass its own tests.
+      - run: dotnet test --no-build -c Release
+
+      - run: dotnet pack src/AppleQueue.Cli --no-build -c Release -p:Version=${{ steps.version.outputs.value }} -o artifacts
+
+      # Minted last, right before the push: the key is only valid for ~1 hour.
+      - name: NuGet login
+        id: login
+        uses: NuGet/login@v1
         with:
-          files: |
-            dist/applequeue-*
-            dist/SHA256SUMS
-          generate_release_notes: true
+          user: REPLACE_WITH_YOUR_NUGET_USERNAME
+
+      - name: Push to NuGet.org
+        run: >
+          dotnet nuget push artifacts/*.nupkg
+          --api-key "${{ steps.login.outputs.NUGET_API_KEY }}"
+          --source https://api.nuget.org/v3/index.json
+          --skip-duplicate
+
       - uses: actions/upload-artifact@v4
         with:
-          name: winget-manifests
-          path: dist/winget/
-
-  # Opens the pull request against microsoft/winget-pkgs that publishes
-  # `winget install applequeue`. Needs WINGET_TOKEN: a classic PAT with
-  # public_repo scope on an account that has forked winget-pkgs.
-  winget:
-    needs: binaries
-    runs-on: windows-latest
-    if: ${{ !contains(github.ref_name, '-') }} # skip prereleases
-    steps:
-      - uses: vedantmgoyal9/winget-releaser@main
-        with:
-          identifier: DudeThatsErin.AppleQueue
-          installers-regex: 'applequeue-win-(x64|arm64)\.exe$'
-          token: ${{ secrets.WINGET_TOKEN }}
+          name: nupkg
+          path: artifacts/*.nupkg
