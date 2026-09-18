@@ -1,3 +1,4 @@
+using System.Text.Json.Nodes;
 using AppleQueue.Cli.Configuration;
 using AppleQueue.Cli.Console;
 using AppleQueue.Cli.Http;
@@ -13,8 +14,16 @@ public sealed class CommandContext
     /// <summary>Builds a client from the resolved settings; throws ExitCode.Config when unset.</summary>
     public required Func<IAppleQueueClient> ClientFactory { get; init; }
 
-    public Task<BackendConfig> FetchConfigAsync(IAppleQueueClient client, CancellationToken ct = default)
-        => throw new NotImplementedException();
+    public async Task<BackendConfig> FetchConfigAsync(IAppleQueueClient client, CancellationToken ct = default)
+        => BackendConfig.From(await client.GetAsync("/config", ct).ConfigureAwait(false));
+
+    /// <summary>--json emits the backend's own response and nothing else.</summary>
+    public int Report(bool asJson, JsonObject response, Action print)
+    {
+        if (asJson) Io.Json(response);
+        else print();
+        return ExitCode.Ok;
+    }
 }
 
 public interface ICommand

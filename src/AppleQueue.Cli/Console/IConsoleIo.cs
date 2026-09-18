@@ -1,3 +1,7 @@
+using System.Text;
+using System.Text.Json;
+using System.Text.Json.Nodes;
+
 namespace AppleQueue.Cli.Console;
 
 /// <summary>
@@ -18,18 +22,55 @@ public interface IConsoleIo
 
 public sealed class SystemConsoleIo : IConsoleIo
 {
+    private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
+
     public void Out(string text) => System.Console.Out.Write($"{text}\n");
 
     public void Note(string text) => System.Console.Error.Write($"{text}\n");
 
-    // TODO: JsonSerializer with WriteIndented = true and camelCase naming, trailing newline.
-    public void Json(object value) => throw new NotImplementedException();
+    public void Json(object value)
+    {
+        var text = value is JsonNode node
+            ? node.ToJsonString(JsonOptions)
+            : JsonSerializer.Serialize(value, JsonOptions);
+        System.Console.Out.Write($"{text}\n");
+    }
 
-    // TODO: when secret, read with Console.ReadKey(intercept: true); fall back to a
-    // plain line read when stdin is redirected (Console.IsInputRedirected).
     public Task<string> AskAsync(string prompt, bool secret = false, CancellationToken ct = default)
-        => throw new NotImplementedException();
+    {
+        // A redirected stdin has no terminal to mask, and ReadKey would throw.
+        if (System.Console.IsInputRedirected)
+        {
+            System.Console.Error.Write(prompt);
+            return Task.FromResult((System.Console.ReadLine() ?? string.Empty).Trim());
+        }
 
-    public Task<string> ReadStdinAsync(CancellationToken ct = default)
-        => throw new NotImplementedException();
+        System.Console.Error.Write(prompt);
+        if (!secret) return Task.FromResult((System.Console.ReadLine() ?? string.Empty).Trim());
+
+        var buffer = new StringBuilder();
+        while (true)
+        {
+            ct.ThrowIfCancellationRequested();
+            var key = System.Console.ReadKey(intercept: true);
+            if (key.Key == ConsoleKey.Enter) break;
+            if (key.Key == ConsoleKey.Backspace)
+            {
+                if (buffer.Length > 0) buffer.Length--;
+                continue;
+            }
+
+            if (!char.IsControl(key.KeyChar)) buffer.Append(key.KeyChar);
+        }
+
+        System.Console.Error.Write("\n");
+        return Task.FromResult(buffer.ToString().Trim());
+    }
+
+    public async Task<string> ReadStdinAsync(CancellationToken ct = default)
+    {
+        using var reader = new StreamReader(System.Console.OpenStandardInput(), Encoding.UTF8);
+        var text = await reader.ReadToEndAsync(ct).ConfigureAwait(false);
+        return text.TrimEnd('\r', '\n');
+    }
 }
