@@ -19,7 +19,7 @@ on:
 
 permissions:
   id-token: write   # required to request the OIDC token
-  contents: read
+  contents: write
 
 jobs:
   publish:
@@ -67,3 +67,10 @@ jobs:
         with:
           name: nupkg
           path: artifacts/*.nupkg
+
+      - name: Publish GitHub release with generated changelog
+        if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --title "$TAG" --generate-notes
