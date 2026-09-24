@@ -22,6 +22,8 @@ public sealed class Cli
           applequeue reminder add <title> [options] Queue a Reminder
           applequeue event add <title> --start ...  Queue a Calendar event
           applequeue journal add <title> [options]  Queue an Apple Journal entry
+          applequeue freeform add <title> --board <name> [options]
+                                                    Add Markdown and files to a Freeform board
           applequeue list <journal|notes|reminders|events>
                                                     Show items still waiting for your Shortcut
           applequeue remove <kind> <id...>          Discard queued items without creating them
@@ -106,6 +108,7 @@ public sealed class Cli
             "reminder" => Group("reminder", rest, ct, ("add", new ReminderAddCommand())),
             "event" => Group("event", rest, ct, ("add", new EventAddCommand())),
             "journal" => Group("journal", rest, ct, ("add", new JournalAddCommand())),
+            "freeform" => Group("freeform", rest, ct, ("add", new FreeformAddCommand())),
             "list" => new QueueListCommand().RunAsync(_context, rest, ct),
             "remove" => new QueueRemoveCommand().RunAsync(_context, rest, ct),
             _ => throw new CliException($"unknown command \"{command}\". Run `applequeue --help`.", ExitCode.Usage),

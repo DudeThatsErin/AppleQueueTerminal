@@ -16,6 +16,7 @@ public interface IAppleQueueClient
 {
     Task<JsonObject> GetAsync(string path, CancellationToken ct = default);
     Task<JsonObject> PostAsync(string path, JsonObject body, CancellationToken ct = default);
+    Task<JsonObject> UploadAsync(string path, string filename, byte[] bytes, string mimeType, CancellationToken ct = default);
     Task<JsonObject> DeleteAsync(string path, JsonObject body, CancellationToken ct = default);
 }
 
@@ -48,7 +49,19 @@ public sealed class AppleQueueClient : IAppleQueueClient, IDisposable
     public Task<JsonObject> DeleteAsync(string path, JsonObject body, CancellationToken ct = default)
         => SendAsync(HttpMethod.Delete, path, body, ct);
 
+    public async Task<JsonObject> UploadAsync(string path, string filename, byte[] bytes, string mimeType, CancellationToken ct = default)
+    {
+        using var form = new MultipartFormDataContent();
+        var file = new ByteArrayContent(bytes);
+        file.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(mimeType);
+        form.Add(file, "file", filename);
+        return await SendAsync(HttpMethod.Post, path, form, ct).ConfigureAwait(false);
+    }
+
     private async Task<JsonObject> SendAsync(HttpMethod method, string path, JsonObject? body, CancellationToken ct)
+        => await SendAsync(method, path, body is null ? null : new StringContent(body.ToJsonString(), Encoding.UTF8, "application/json"), ct).ConfigureAwait(false);
+
+    private async Task<JsonObject> SendAsync(HttpMethod method, string path, HttpContent? content, CancellationToken ct)
     {
         var target = $"{_baseUrl}/api{path}";
 
@@ -58,10 +71,7 @@ public sealed class AppleQueueClient : IAppleQueueClient, IDisposable
         using var request = new HttpRequestMessage(method, target);
         request.Headers.TryAddWithoutValidation("x-api-key", _apiKey);
         request.Headers.TryAddWithoutValidation("accept", "application/json");
-        if (body is not null)
-        {
-            request.Content = new StringContent(body.ToJsonString(), Encoding.UTF8, "application/json");
-        }
+        request.Content = content;
 
         HttpResponseMessage response;
         try

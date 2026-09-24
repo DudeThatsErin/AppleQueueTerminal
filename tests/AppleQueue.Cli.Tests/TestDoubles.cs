@@ -77,6 +77,9 @@ public sealed class FakeAppleQueueClient : IAppleQueueClient
 
     public Task<JsonObject> PostAsync(string path, JsonObject body, CancellationToken ct = default) => Handle("POST", path, body);
 
+    public Task<JsonObject> UploadAsync(string path, string filename, byte[] bytes, string mimeType, CancellationToken ct = default)
+        => Handle("POST", path, new JsonObject { ["name"] = filename });
+
     public Task<JsonObject> DeleteAsync(string path, JsonObject body, CancellationToken ct = default) => Handle("DELETE", path, body);
 
     private Task<JsonObject> Handle(string method, string path, JsonObject? body)
