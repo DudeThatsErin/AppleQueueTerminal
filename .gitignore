@@ -6,3 +6,6 @@ artifacts/
 .idea/
 TestResults/
 nupkg/
+.node-cache/
+dist/
+node_modules/
